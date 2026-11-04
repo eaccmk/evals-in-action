@@ -1,0 +1,99 @@
+# ==============================================================================
+# Demo Suite - Level 5: Cost, Latency & Threshold Performance Gating
+# Self-contained executable configuration for promptfoo
+# ==============================================================================
+
+description: "Demo Suite - Level 5: Cost, Latency & Threshold Performance Gating"
+
+evaluateOptions:
+  maxConcurrency: 1
+  delay: 1000
+
+prompts:
+  - file://../prompts/basic.txt
+
+providers:
+  # - id: google:gemini-3.5-flash-lite
+  - id: ollama:chat:llama3.2:3b
+    label: "Gemini 3.5 Flash"
+    config:
+      temperature: 0.1
+      maxRetries: 4
+      thinking:
+        thinkingBudget: 0 # Eliminates reasoning delay on factual/rubric tests
+
+defaultTest:
+  options:
+    provider:
+      id: ollama:chat:llama3.2:3b
+      # id: google:gemini-pro-latest
+      config:
+        temperature: 0.1
+        maxRetries: 4
+        thinking:
+          thinkingBudget: 0
+
+tests:
+  - description: "Level 5.1: Strict Latency & Cost Budget SLA (Real-Time Search Autocomplete)"
+    vars:
+      input: "Given the query 'quantum computing qubits', generate 3 relevant search autocomplete suggestions as a JSON array of strings. Be extremely concise."
+    assert:
+      # Latency guardrail: Must complete within 2,500 milliseconds (2.5s SLA)
+      - type: latency
+        threshold: 2500
+
+      # Cost guardrail: Max $0.002 per invocation to prevent unbounded API spending
+      - type: cost
+        threshold: 0.002
+
+      # Deterministic format check: Must be a valid JSON array of strings
+      - type: is-json
+        value:
+          type: array
+          items:
+            type: string
+          minItems: 3
+          maxItems: 3
+
+  - description: "Level 5.2: Minimum Score Threshold on Complex Rubric"
+    vars:
+      input: |
+        Summarize the key architectural benefits of adopting event-driven architecture (EDA) over monolithic polling in under 80 words.
+    assert:
+      # High-standard rubric with explicit 0.85 (85%) threshold requirement
+      - type: llm-rubric
+        provider:
+          # id: google:gemini-pro-latest
+          id: ollama:chat:llama3.2:3b
+          config:
+            maxRetries: 4
+            thinking:
+              thinkingBudget: 0
+        value: |
+          The summary must:
+          1. Explain decoupling, real-time reactivity, and reduced resource waste compared to polling.
+          2. Strictly adhere to the word limit (under 80 words).
+          3. Maintain high density of insight without filler words.
+        threshold: 0.85
+
+      # Brevity guardrail via javascript: total word count must be <= 90 words
+      - type: javascript
+        value: "output.trim().split(/\\s+/).length <= 90"
+
+  - description: "Level 5.3: SLA Gating for Production Chatbot Tier"
+    vars:
+      input: "A user asks: 'What is the refund window for annual subscriptions?' Answer that it is 30 days from purchase date and provide the link support.acme.com/refunds."
+    assert:
+      # Fast customer service SLA: response under 3,000ms
+      - type: latency
+        threshold: 3000
+
+      # Low cost constraint
+      - type: cost
+        threshold: 0.001
+
+      # Exact facts present
+      - type: icontains
+        value: "30 days"
+      - type: icontains
+        value: "support.acme.com/refunds"

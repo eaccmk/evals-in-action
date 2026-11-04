@@ -1,0 +1,50 @@
+name: Promptfoo LLM Evaluations
+
+on:
+  pull_request:
+    paths:
+      - 'prompts/**'
+      - 'tests/**'
+      - 'promptfooconfig.yaml'
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Cache Promptfoo
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/promptfoo
+          key: ${{ runner.os }}-promptfoo-${{ hashFiles('prompts/**', 'tests/**') }}
+          restore-keys: |
+            ${{ runner.os }}-promptfoo-
+
+      - name: Run Evaluations
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          npx promptfoo eval -c promptfooconfig.yaml -j 1 --output report.html --output results.json
+
+      - name: Upload HTML Report Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: promptfoo-html-report
+          path: report.html

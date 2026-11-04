@@ -1,0 +1,103 @@
+# ==============================================================================
+# Demo Suite - Level 4: Model vs. Model Benchmarking
+# Self-contained executable configuration for promptfoo
+# ==============================================================================
+
+description: "Demo Suite - Level 4: Model vs. Model Benchmarking"
+
+evaluateOptions:
+  maxConcurrency: 1
+  delay: 1000
+
+prompts:
+  - file://../prompts/comparison.txt
+
+# Side-by-side candidate vs benchmark evaluation
+providers:
+  # - id: google:gemini-3.5-flash-lite
+  - id: ollama:chat:llama3.2:3b
+    label: "Candidate: Gemini 3.5 Flash"
+    config:
+      temperature: 0.1
+      maxRetries: 4
+      thinking:
+        thinkingBudget: 0 # Eliminates reasoning delay on factual/rubric tests
+  # - id: google:gemini-pro-latest
+  - id: ollama:chat:llama3.2:3b
+    label: "Benchmark: Gemini Pro Latest"
+    config:
+      temperature: 0.1
+      maxRetries: 4
+      thinking:
+        thinkingBudget: 0 # Eliminates reasoning delay on factual/rubric tests
+
+  # Alternative battle providers (Uncomment to benchmark cross-provider):
+  # - id: groq:llama-3.3-70b-versatile
+  #   label: "Groq Llama 3.3 70B"
+  # - id: openrouter:anthropic/claude-3.5-sonnet
+  #   label: "OpenRouter Claude 3.5 Sonnet"
+
+tests:
+  - description: "Level 4.1: Concurrency Bug Detection (Go Data Race)"
+    vars:
+      role: "Senior Distributed Systems & Go Architect"
+      task: |
+        Analyze this Go snippet for race conditions and memory safety bugs:
+        ```go
+        type Counter struct {
+            count int
+        }
+        func (c *Counter) Inc() {
+            c.count++
+        }
+        func main() {
+            var c Counter
+            for i := 0; i < 1000; i++ {
+                go c.Inc()
+            }
+        }
+        ```
+        Identify the bug, explain why it happens at the machine/goroutine level, and provide the idiomatic Go fix using atomic/sync.
+    assert:
+      - type: icontains
+        value: "data race"
+      - type: regex
+        value: "(sync\\.Mutex|sync/atomic|atomic\\.Add|sync\\.WaitGroup)"
+      - type: llm-rubric
+        provider:
+          # id: google:gemini-pro-latest
+        id: ollama:chat:llama3.2:3b
+          config:
+            maxRetries: 4
+            thinking:
+              thinkingBudget: 0
+        value: |
+          The analysis must:
+          1. Correctly point out the unsynchronized concurrent writes to `c.count`.
+          2. Point out that `main` exits before goroutines complete without synchronization (e.g., needing `sync.WaitGroup`).
+          3. Provide safe, idiomatic, compile-ready Go replacement code.
+
+  - description: "Level 4.2: Architecture Tradeoff Battle (Database Selection)"
+    vars:
+      role: "Principal Cloud Data Architect"
+      task: |
+        We are designing an IoT sensor ingestion system receiving 200,000 telemetry events per second.
+        Compare PostgreSQL (with TimescaleDB) vs Apache Cassandra / ScyllaDB for this workload across:
+        1. Write throughput & horizontal scalability
+        2. Complex analytical query capabilities
+        3. Operational complexity and cost
+        Provide a decisive recommendation for a 5-person engineering team.
+    assert:
+      - type: llm-rubric
+        provider:
+          # id: google:gemini-pro-latest
+          id: ollama:chat:llama3.2:3b
+          config:
+            maxRetries: 4
+            thinking:
+              thinkingBudget: 0
+        value: |
+          The response must:
+          1. Accurately contrast high write throughput characteristics of Cassandra/ScyllaDB (LSM trees) with relational indexing in TimescaleDB.
+          2. Weigh the operational burden on a small team (5 engineers).
+          3. Make a decisive, justified recommendation rather than a non-committal answer.

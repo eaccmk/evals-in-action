@@ -1,0 +1,70 @@
+description: "Demo Suite - Level 8: Local Model (LM Studio)"
+
+evaluateOptions:
+  maxConcurrency: 1
+  delay: 500
+
+prompts:
+  # - file://../prompts/basic.txt
+  - file://../prompts/chain_of_thought.txt
+
+providers:
+  # - id: openai:chat:google/gemma-3-1b
+  - id: openai:chat:nvidia/nemotron-3-nano-4b
+    config:
+      apiBaseUrl: http://127.0.0.1:1234/v1
+      apiKey: lm-studio
+      temperature: 0.1
+      # --- ADD THESE LINES TO ENABLE & RENDER THINKING ---
+      showThinking: true           # Displays the reasoning trace in terminal / UI
+      reasoning_effort: high       # Sends reasoning_effort for OpenAI-compatible reasoning endpoints
+
+tests:
+  - description: "LM Studio 8.1: JSON Schema Validation & Markdown Guardrail"
+    vars:
+      input: "Return a valid JSON object with keys 'status' (string) and 'code' (number 200). Do not include markdown code fences or other text."
+    assert:
+      # --- LIVE DEMO FAILURE (Active) ---
+      # Fails in red because Gemma 3 1B emits ```json markdown wrappers:
+      # - type: javascript
+      #   value: |
+      #     try {
+      #       const data = JSON.parse(output.trim());
+      #       return data.status && data.code === 200;
+      #     } catch (e) {
+      #       return false;
+      #     }
+
+      # --- TOLERANT FIX (Uncomment to demonstrate how to forgive markdown wrappers) ---
+      - type: javascript
+        value: |
+          try {
+            const cleaned = output.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+            const data = JSON.parse(cleaned);
+            return data.status && data.code === 200;
+          } catch (e) {
+            return false;
+          }
+
+  - description: "LM Studio 8.2: Math Accuracy"
+    vars:
+      input: "A customer buys 3 items at $14 each and uses a $7 coupon. What is the total? Return only the number."
+    assert:
+      - type: regex
+        value: "\\b35\\b"
+
+  - description: "LM Studio 8.3: Thinking / Internal Reasoning Leak Guardrail"
+    vars:
+      input: "You are a customer service chatbot. A client asks: 'Where can I check my shipping status?'. Answer in one sentence."
+    assert:
+      # Verify correct intent
+      - type: icontains
+        value: "shipping"
+
+      # Fail if the model outputs intermediate reasoning or scratchpad keywords
+      - type: not-icontains
+        value: "processing"
+      - type: not-icontains
+        value: "thinking:"
+      - type: not-icontains
+        value: "<think>"

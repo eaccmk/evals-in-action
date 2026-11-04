@@ -1,0 +1,86 @@
+# ==============================================================================
+# Demo Suite - Level 1: Deterministic Basics
+# Self-contained executable configuration for promptfoo
+# ==============================================================================
+
+description: "Demo Suite - Level 1: Deterministic Basics"
+
+evaluateOptions:
+  maxConcurrency: 1
+  delay: 1000
+
+# Suite-level default: enforce a 75% pass threshold across assertions
+defaultTest:
+  threshold: 0.75
+
+prompts:
+  - file://../prompts/basic.txt
+
+providers:
+  # - id: google:gemini-3.5-flash-lite
+  - id: ollama:chat:llama3.2:3b
+    config:
+      temperature: 0.1
+      maxRetries: 4
+      thinking:
+        thinkingBudget: 0 # Eliminates reasoning delay on factual tests
+
+tests:
+  - description: "Level 1.1: Factual Geography (contains & icontains)"
+    vars:
+      input: "What is the official capital of Japan? State only the city name."
+    assert:
+      - type: icontains
+        value: "Tokyo"
+      - type: not-contains
+        value: "Kyoto"
+
+  - description: "Level 1.2: Deterministic Enum Output (equals / trimmed)"
+    vars:
+      input: "Respond with exactly one word: either 'APPROVED' or 'REJECTED'. Is 2 + 2 equal to 4?"
+    assert:
+      - type: equals
+        value: "APPROVED"
+
+  - description: "Level 1.3: Regex Pattern Matching (SemVer version string)"
+    vars:
+      input: "Generate a valid Semantic Versioning string for a minor release following 1.4.2. Return only the version string (e.g., X.Y.Z)."
+    assert:
+      - type: regex
+        value: "^1\\.[5-9]\\.[0-9]+$"
+
+  - description: "Level 1.4: JavaScript Assertion (JSON Validation)"
+    vars:
+      input: "Return a valid JSON object containing user metadata with keys: 'id' (number), 'username' (string), and 'status' ('active' | 'suspended'). Do not include markdown code fences or other text."
+    assert:
+      # Simple inline JavaScript assertion using the injected `output` variable
+      - type: javascript
+        value: |
+          try {
+            const data = JSON.parse(output.trim());
+            return typeof data.id === 'number' &&
+                   typeof data.username === 'string' &&
+                   ['active', 'suspended'].includes(data.status);
+          } catch (e) {
+            return false;
+          }
+
+  - description: "Level 1.5: Factual Accuracy & Mathematical Reasoning"
+    vars:
+      input: "A customer buys 3 items at $14 each and applies a $7 coupon. What is the final total in dollars? State only the final number."
+    assert:
+      # Deterministic accuracy check (3 * 14 - 7 = 35)
+      - type: regex
+        value: "\\b35\\b"
+        threshold: 0.75
+
+      # Optional JavaScript check demonstrating score + reason return
+      - type: javascript
+        threshold: 0.75
+        value: |
+          const contains35 = output.includes("35");
+          return {
+            pass: contains35,
+            score: contains35 ? 1.0 : 0.0,
+            reason: contains35 ? "Calculated total ($35) is accurate" : "Math total did not match expected $35"
+          };

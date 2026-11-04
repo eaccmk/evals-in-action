@@ -1,0 +1,47 @@
+{
+  "name": "evals-in-action",
+  "version": "1.0.0",
+  "description": "Production-grade promptfoo evaluation framework featuring Google Gemini, local models (LM Studio & Ollama)",
+  "main": "promptfooconfig.yaml",
+  "type": "module",
+  "scripts": {
+    "eval": "promptfoo eval -j 1",
+    "eval:all": "promptfoo eval -j 1",
+    "eval:0": "promptfoo eval -c tests/00_simple_eval.yaml -j 1",
+    "eval:1": "promptfoo eval -c tests/01_simple_assertions.yaml -j 1",
+    "eval:2": "promptfoo eval -c tests/02_thinking_chat.yaml -j 1",
+    "eval:3": "promptfoo eval -c tests/03_llm_rubric.yaml -j 1",
+    "eval:4": "promptfoo eval -c tests/04_llm_vs_llm.yaml -j 1",
+    "eval:5": "promptfoo eval -c tests/05_cost_and_threshold.yaml -j 1",
+    "eval:7": "promptfoo eval -c tests/07_lm_studio.yaml -j 1",
+    "eval:lmstudio": "promptfoo eval -c tests/07_lm_studio.yaml -j 1 --no-cache",
+    "eval:8": "promptfoo eval -c tests/08_thinking_lmstudio.yaml -j 1 --no-cache",
+    "view": "promptfoo view -p 15500",
+    "eval:view": "promptfoo eval -j 1 && promptfoo view -p 15500",
+    "view:open": "promptfoo view -p 15500 -y",
+    "export": "promptfoo export -o output/report.html",
+    "export:json": "promptfoo export -o output/report.json",
+    "test": "npm run eval"
+  },
+  "keywords": [
+    "promptfoo",
+    "evals",
+    "llm-evaluation",
+    "gemini",
+    "lm-studio",
+    "ollama",
+    "local-models",
+    "llm-as-a-judge",
+    "ai-testing",
+    "benchmark"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "dotenv": "^16.4.7",
+    "promptfoo": "^0.125.1"
+  },
+  "engines": {
+    "node": ">=20.0.0 <=22.x"
+  }
+}

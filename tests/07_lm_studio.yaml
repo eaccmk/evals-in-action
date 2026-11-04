@@ -1,0 +1,51 @@
+description: "Demo Suite - Level 7: Local Model (LM Studio)"
+
+evaluateOptions:
+  maxConcurrency: 1 # Run sequentially to avoid GPU VRAM contention
+  delay: 500
+
+prompts:
+  - file://../prompts/basic.txt
+
+providers:
+  # Option A: Gemma 3 1B
+  - id: openai:chat:google/gemma-3-1b
+    config:
+      apiBaseUrl: http://127.0.0.1:1234/v1
+      apiKey: lm-studio
+      temperature: 0.1
+
+  # Option B: Nemotron 3 Nano 4B (Uncomment to compare side-by-side)
+  # - id: openai:chat:nvidia/nemotron-3-nano-4b
+  #   config:
+  #     apiBaseUrl: http://127.0.0.1:1234/v1
+  #     apiKey: lm-studio
+  #     temperature: 0.1
+
+tests:
+  - description: "LM Studio 7.1: Factual Geography"
+    vars:
+      input: "What is the capital of Japan? State only the city name."
+    assert:
+      - type: icontains
+        value: "Tokyo"
+
+  - description: "LM Studio 7.2: JSON Schema Validation"
+    vars:
+      input: "Return a valid JSON object with keys 'status' (string) and 'code' (number 200). Do not include markdown fences."
+    assert:
+      - type: javascript
+        value: |
+          try {
+            const data = JSON.parse(output.trim());
+            return data.status && data.code === 200;
+          } catch (e) {
+            return false;
+          }
+
+  - description: "LM Studio 7.3: Math Accuracy"
+    vars:
+      input: "A customer buys 3 items at $14 each and uses a $7 coupon. What is the total? Return only the number."
+    assert:
+      - type: regex
+        value: "\\b35\\b"

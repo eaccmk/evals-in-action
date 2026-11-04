@@ -1,0 +1,40 @@
+# ==============================================================================
+# Demo Suite - Level 1: Deterministic Basics
+# Self-contained executable configuration for promptfoo
+# ==============================================================================
+
+description: "Demo Suite - Level 1: Deterministic Basics"
+
+evaluateOptions:
+  maxConcurrency: 1
+  delay: 1000
+
+prompts:
+  - file://../prompts/basic.txt
+
+providers:
+  # - id: google:gemini-3.5-flash
+  - id: google:gemini-3.5-flash-lite
+  # - id: ollama:chat:llama3.2:3b
+    config:
+      temperature: 0.1
+      maxRetries: 4
+      thinking:
+        thinkingBudget: 0 # Eliminates reasoning delay on factual/rubric tests
+
+tests:
+  - description: "Level 1.1: Factual Geography (contains & icontains)"
+    vars:
+      input: "What is the official capital of Japan? State only the city name."
+    assert:
+      - type: icontains
+        value: "Tokyo"
+      - type: not-contains
+        value: "Kyoto"
+
+  - description: "Level 1.3: Regex Pattern Matching (SemVer version string)"
+    vars:
+      input: "Generate a valid Semantic Versioning string for a minor release following 1.4.2. Return only the version string (e.g., X.Y.Z)."
+    assert:
+      - type: regex
+        value: "^1\\.[5-9]\\.[0-9]+$"

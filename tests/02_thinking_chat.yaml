@@ -1,0 +1,65 @@
+# ==============================================================================
+# Demo Suite - Level 2: Chain-of-Thought & Chat Inspection
+# Self-contained executable configuration for promptfoo
+# ==============================================================================
+
+description: "Demo Suite - Level 2: Chain-of-Thought & Chat Inspection"
+
+evaluateOptions:
+  maxConcurrency: 1
+  delay: 1000
+
+prompts:
+  - file://../prompts/chain_of_thought.txt
+
+providers:
+  # - id: google:gemini-3.5-flash-lite
+  - id: ollama:chat:llama3.2:3b
+    label: "Gemini 3.5 Flash (Thinking Model)"
+    config:
+      temperature: 0.2
+      maxRetries: 4
+
+tests:
+  - description: "Level 2.1: Chain-of-Thought Tag & Reasoning Inspection (Logic Riddle)"
+    vars:
+      input: "Sally has 3 brothers. Each brother has 2 sisters. How many sisters does Sally have? Reason step-by-step."
+    assert:
+      # Verify reasoning output or intermediate thinking structure
+      - type: regex
+        value: "(<thinking>[\\s\\S]*?</thinking>|(?i)(reasoning|thinking|step\\s*1)[\\s\\S]+)"
+      # Assert intermediate reasoning appears in the thought process
+      - type: regex
+        value: "(?i)(brother|sister|family|Sally)"
+      # Assert final answer contains the correct mathematical deduction (Sally has 1 sister)
+      - type: regex
+        value: "(?i)(1 sister|one sister|has 1|\\b1\\b)"
+
+  - description: "Level 2.2: Multi-Turn Conversational Memory & CoT Calculation"
+    vars:
+      input: |
+        Conversation History:
+        User: "I am planning a 3-day conference for 150 attendees in Seattle."
+        Assistant: "Noted! Key requirements: 3-day duration, 150 attendees, Seattle location."
+        
+        Current Request:
+        User: "We just secured a sponsor who is bringing 50 additional guests, and we need 2 coffee breaks per attendee per day. In your thinking block, calculate total coffee servings needed over the entire event, then state the final count in the answer block."
+    assert:
+      # Verify reasoning output or intermediate thinking structure
+      - type: regex
+        value: "(<thinking>[\\s\\S]*?</thinking>|(?i)(calculation|reasoning|total)[\\s\\S]+)"
+      # Verify intermediate calculation deduction (200 attendees * 2 breaks * 3 days = 1,200)
+      - type: regex
+        value: "(200|150\\s*\\+\\s*50)"
+      - type: regex
+        value: "(?i)(1,?200|twelve hundred)"
+
+  - description: "Level 2.3: Anti-Leak Assertion (No Unprocessed Thinking in Answer)"
+    vars:
+      input: "Explain the difference between TCP and UDP in one sentence."
+    assert:
+      # Ensure answer block is concise and does not regurgitate the thinking tags inside it
+      - type: not-regex
+        value: "<answer>[\\s\\S]*?<thinking>[\\s\\S]*?</answer>"
+      - type: regex
+        value: "(?i)(connection-oriented|reliable|handshake|connectionless|speed|datagram)"
